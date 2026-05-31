@@ -3,11 +3,12 @@ name = "net-route"
 version = "0.4.6"
 authors = ["Johnyburd <johnyburd8@gmail.com>"]
 
-edition = "2021"
+edition = "2024"
+rust-version = "1.95.0"
 license = "MIT"
-description = "This crate provides a cross-platform interface for manipulating the routing table"
-homepage = "https://github.com/johnyburd/net-route"
-repository = "https://github.com/johnyburd/net-route"
+description = "Read the OS routing table (slimmed fork: read-only, sync, safe parser). Forked from johnyburd/net-route for the Mapscan project."
+homepage = "https://github.com/franchb/net-route"
+repository = "https://github.com/franchb/net-route"
 readme = "README.md"
 keywords = ["route", "network", "ip"]
 
@@ -16,50 +17,19 @@ keywords = ["route", "network", "ip"]
 targets = [
     "x86_64-apple-darwin",
     "x86_64-unknown-linux-gnu",
-    "i686-unknown-linux-gnu",
     "x86_64-pc-windows-msvc",
-    "i686-pc-windows-msvc",
 ]
 
-[dependencies]
-async-stream = "0.3.3"
-futures = "0.3.24"
-tokio = { version = "1", features = [
-    "macros",
-    "rt",
-    "fs",
-    "io-util",
-    "sync",
-    "net",
-] }
-
-[target.'cfg(target_os = "linux")'.dependencies]
-rtnetlink = "0.14"
-netlink-sys = "0.8.5"
-netlink-packet-core = "0.7.0"
-netlink-packet-route = "0.19"
+# The pure parser (src/parse.rs) has NO dependencies — std only — so depending
+# on this crate from a Linux build pulls nothing heavy. Platform FFI is gated:
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
+# Trimmed to the read path only (GetIpForwardTable2 + luid->name).
 windows-sys = { version = "0.59", features = [
-    "Win32_System_Diagnostics_Debug",
-    "Win32_System_SystemServices",
-    "Win32_Security_Cryptography",
+    "Win32_Foundation",
     "Win32_NetworkManagement_IpHelper",
     "Win32_NetworkManagement_Ndis",
     "Win32_Networking_WinSock",
-    "Win32_System_Threading",
-    "Win32_System_Com",
-    "Win32_System_Rpc",
-    "Win32_Security",
-    "Win32_Foundation",
-    "Win32_System_Ioctl",
-    "Win32_System_IO",
-    "Win32_System_LibraryLoader",
-    "Win32_Security_WinTrust",
 ] }
-
-[build-dependencies]
-bindgen = "0.71"
-
-[dev-dependencies]
-tokio = { version = "1", features = ["rt-multi-thread"] }
