@@ -12,46 +12,66 @@ const AF_ROUTE: libc::c_int = 17;
 const NET_RT_DUMP: libc::c_int = 7;
 
 /// Fetch the raw `NET_RT_DUMP` buffer via sysctl.
+///
+/// The table size can change between the sizing call and the fetch call, so a
+/// busy system can return `ENOMEM`/`ENOBUFS` if it grew in between. Re-query the
+/// size, over-allocate by a small pad, and retry a bounded number of times
+/// rather than surfacing a transient race to the caller.
 fn fetch_raw_table() -> io::Result<Vec<u8>> {
     let mut mib: [libc::c_int; 6] = [CTL_NET, AF_ROUTE, 0, 0, NET_RT_DUMP, 0];
-    let mut needed: libc::size_t = 0;
 
-    // SAFETY: `mib` is a 6-element array matching the `namelen = 6` argument;
-    // passing a null `oldp` with a valid `oldlenp` asks the kernel for the
-    // required buffer size only (no write). All pointers are valid for the call.
-    let rc = unsafe {
-        libc::sysctl(
-            mib.as_mut_ptr(),
-            6,
-            std::ptr::null_mut(),
-            &mut needed,
-            std::ptr::null_mut(),
-            0,
-        )
-    };
-    if rc < 0 {
-        return Err(io::Error::last_os_error());
+    for _ in 0..3 {
+        let mut needed: libc::size_t = 0;
+        // SAFETY: `mib` is a 6-element array matching the `namelen = 6` argument;
+        // passing a null `oldp` with a valid `oldlenp` asks the kernel for the
+        // required buffer size only (no write). All pointers are valid.
+        let rc = unsafe {
+            libc::sysctl(
+                mib.as_mut_ptr(),
+                6,
+                std::ptr::null_mut(),
+                &mut needed,
+                std::ptr::null_mut(),
+                0,
+            )
+        };
+        if rc < 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        // Pad against the table growing between the sizing and fetch calls.
+        // `saturating_add` keeps the panic-free guarantee even in the
+        // (unreachable) overflow case, matching the parser's defensive style.
+        needed = needed.saturating_add(2048);
+        let mut buf = vec![0u8; needed];
+        // SAFETY: `buf` is allocated for `needed` bytes (the reported size plus
+        // pad); `oldp = buf.as_mut_ptr()` is valid for `needed` bytes and
+        // `oldlenp` points at the same `needed`. The kernel writes at most
+        // `needed` bytes and updates `needed` to the amount written.
+        let rc = unsafe {
+            libc::sysctl(
+                mib.as_mut_ptr(),
+                6,
+                buf.as_mut_ptr().cast(),
+                &mut needed,
+                std::ptr::null_mut(),
+                0,
+            )
+        };
+        if rc >= 0 {
+            buf.truncate(needed);
+            return Ok(buf);
+        }
+
+        // Only a size race (table grew past our buffer) is retryable; surface
+        // any other error immediately.
+        let err = io::Error::last_os_error();
+        if err.raw_os_error() != Some(libc::ENOMEM) && err.raw_os_error() != Some(libc::ENOBUFS) {
+            return Err(err);
+        }
     }
 
-    let mut buf = vec![0u8; needed];
-    // SAFETY: `buf` has capacity `needed` (the size the kernel just reported);
-    // `oldp = buf.as_mut_ptr()` is valid for `needed` bytes and `oldlenp`
-    // points at the same `needed`. The kernel writes at most `needed` bytes.
-    let rc = unsafe {
-        libc::sysctl(
-            mib.as_mut_ptr(),
-            6,
-            buf.as_mut_ptr().cast(),
-            &mut needed,
-            std::ptr::null_mut(),
-            0,
-        )
-    };
-    if rc < 0 {
-        return Err(io::Error::last_os_error());
-    }
-    buf.truncate(needed);
-    Ok(buf)
+    Err(io::Error::other("routing table size changing too rapidly"))
 }
 
 /// Resolve an interface index to its name via `if_indextoname`.

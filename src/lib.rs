@@ -3,8 +3,10 @@
 //!
 //! - [`parse_route_messages`] — pure, `cfg`-independent, panic-free parser for a
 //!   macOS `NET_RT_DUMP` buffer (fuzzable on any host).
-//! - [`list_routes`] — live routing table on macOS (sysctl) and Windows
+//! - `list_routes` — live routing table on macOS (sysctl) and Windows
 //!   (`GetIpForwardTable2`). Not provided on Linux (mapscan uses `/proc/net/route`).
+//!   (Not linked here: it is `cfg`-gated to those targets and would be an
+//!   unresolved intra-doc link on a Linux docs build.)
 //!
 //! The write path (`add`/`delete`), the routing-socket change stream, the Linux
 //! netlink backend, and the `bindgen`/`route.c` toolchain from upstream are
