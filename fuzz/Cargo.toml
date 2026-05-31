@@ -1,0 +1,22 @@
+[package]
+name = "net-route-fuzz"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.95.0"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+net-route = { path = ".." }
+
+[[bin]]
+name = "parse_route_messages"
+path = "fuzz_targets/parse_route_messages.rs"
+test = false
+doc = false
+bench = false
