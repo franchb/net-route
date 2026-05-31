@@ -197,12 +197,25 @@ fn parse_one(rtm_addrs: i32, rtm_index: u16, rtm_flags: i32, body: &[u8]) -> Opt
 
 /// Decode a sockaddr into an `IpAddr`. `AF_LINK` => `Ok(None)` (on-link, no IP).
 fn sa_to_ip(sa: &[u8]) -> Result<Option<IpAddr>, RouteParseError> {
+    // The declared `sa_len` (byte 0) must cover the address field; a short
+    // `sa_len` would otherwise let ROUNDUP padding bytes be read as the address.
+    let sa_len = match sa.first() {
+        Some(&len) => usize::from(len),
+        None => return Ok(None),
+    };
     let family = match sa.get(1) {
         Some(&f) => u16::from(f),
         None => return Ok(None),
     };
     match family {
         f if f == AF_INET => {
+            if sa_len < 8 {
+                return Err(RouteParseError::Truncated {
+                    what: "sockaddr_in",
+                    need: 8,
+                    got: sa_len,
+                });
+            }
             let o = sa.get(4..8).ok_or(RouteParseError::Truncated {
                 what: "sockaddr_in",
                 need: 8,
@@ -211,6 +224,13 @@ fn sa_to_ip(sa: &[u8]) -> Result<Option<IpAddr>, RouteParseError> {
             Ok(Some(IpAddr::V4(Ipv4Addr::new(o[0], o[1], o[2], o[3]))))
         }
         f if f == AF_INET6 => {
+            if sa_len < 24 {
+                return Err(RouteParseError::Truncated {
+                    what: "sockaddr_in6",
+                    need: 24,
+                    got: sa_len,
+                });
+            }
             let o = sa.get(8..24).ok_or(RouteParseError::Truncated {
                 what: "sockaddr_in6",
                 need: 24,
@@ -255,7 +275,11 @@ fn mask_to_prefix(sa: &[u8], dst: IpAddr) -> u8 {
         IpAddr::V6(_) => (8usize, 16usize),
     };
     let mut full = vec![0u8; width];
-    let present = sa_len.saturating_sub(addr_off).min(width);
+    // A truncated buffer can leave `sa_len` claiming more bytes than are
+    // actually present; cap by the real slice length so partial masks still
+    // contribute their available bytes instead of being dropped to /0.
+    let limit = sa_len.min(sa.len());
+    let present = limit.saturating_sub(addr_off).min(width);
     if let Some(bytes) = sa.get(addr_off..addr_off + present) {
         full[..present].copy_from_slice(bytes);
     }
