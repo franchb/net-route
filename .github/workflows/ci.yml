@@ -90,8 +90,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - run: rustup toolchain install nightly --profile minimal && rustup default nightly
+      - run: rustup toolchain install nightly --profile minimal
       - name: install cargo-fuzz
         run: command -v cargo-fuzz >/dev/null 2>&1 || cargo install cargo-fuzz --locked
+      # rust-toolchain.toml pins stable 1.95.0 repo-wide, so the fuzz build must
+      # select nightly explicitly with `+nightly` (a `rustup default` is ignored
+      # because the toml override wins). libFuzzer needs nightly's -Z flags.
       - name: smoke-run parse_route_messages (bounded)
-        run: cargo fuzz run parse_route_messages -- -max_total_time=30 -max_len=65536
+        run: cargo +nightly fuzz run parse_route_messages -- -max_total_time=30 -max_len=65536
