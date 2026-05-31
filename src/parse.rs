@@ -162,12 +162,12 @@ fn parse_one(rtm_addrs: i32, rtm_index: u16, rtm_flags: i32, body: &[u8]) -> Opt
     // freeze route refresh indefinitely. Header-framing errors (rtm_version,
     // truncation) still propagate; per-entry family/address errors do not.
     let destination = match sa_to_ip(slots[RTAX_DST]?) {
-        Ok(Some(ip)) => ip,
+        Ok(Some(ip)) => normalize_v6_scope(ip),
         Ok(None) | Err(_) => return None, // AF_LINK / unknown / bad family => skip entry
     };
 
     let gateway = match slots[RTAX_GATEWAY] {
-        Some(sa) => normalize_v6_scope(sa_to_ip(sa).ok().flatten()),
+        Some(sa) => sa_to_ip(sa).ok().flatten().map(normalize_v6_scope),
         None => None,
     };
 
@@ -245,19 +245,25 @@ fn sa_to_ip(sa: &[u8]) -> Result<Option<IpAddr>, RouteParseError> {
     }
 }
 
-/// macOS encodes the v6 scope_id into bytes 2-3 of link-local / interface-or-
-/// link-local-multicast gateways; zero them to recover the real address.
-fn normalize_v6_scope(ip: Option<IpAddr>) -> Option<IpAddr> {
-    if let Some(IpAddr::V6(v6)) = ip {
+/// Strip the macOS-embedded v6 scope_id (in bytes 2-3) from a link-local /
+/// interface-or-link-local-multicast address, recovering the canonical address.
+///
+/// macOS routing messages embed the scope_id (interface index) in the second
+/// 16-bit word of `fe80::/10` and `ff01::`/`ff02::` addresses — in BOTH the
+/// destination and the gateway. The scope is tracked separately via `ifindex`,
+/// so the address itself must be normalized (else LPM keys on `fe80:7::` instead
+/// of `fe80::`). Non-scoped / non-v6 addresses pass through unchanged.
+fn normalize_v6_scope(ip: IpAddr) -> IpAddr {
+    if let IpAddr::V6(v6) = ip {
         let segs = v6.segments();
         let is_ll = segs[0] == 0xfe80;
         let oct = v6.octets();
         let is_mc = oct[0] == 0xff;
         let mc_scope = oct[1] & 0x0f;
         if is_ll || (is_mc && (mc_scope == 1 || mc_scope == 2)) {
-            return Some(IpAddr::V6(Ipv6Addr::new(
+            return IpAddr::V6(Ipv6Addr::new(
                 segs[0], 0, segs[2], segs[3], segs[4], segs[5], segs[6], segs[7],
-            )));
+            ));
         }
     }
     ip
@@ -342,6 +348,42 @@ mod tests {
         v[1] = 0; // sa_family commonly 0 on compressed masks
         v[4..4 + significant].copy_from_slice(&bytes[..significant]);
         v
+    }
+
+    // sockaddr_in6: [sa_len=28, sa_family=AF_INET6, port(2), flowinfo(4), addr(16), scope(4)]
+    fn sa_in6(segs: [u16; 8]) -> Vec<u8> {
+        let mut v = vec![0u8; 28];
+        v[0] = 28;
+        v[1] = AF_INET6 as u8;
+        for (i, s) in segs.iter().enumerate() {
+            v[8 + i * 2..8 + i * 2 + 2].copy_from_slice(&s.to_be_bytes());
+        }
+        v
+    }
+
+    #[test]
+    fn strips_embedded_scope_from_v6_destination() {
+        // macOS embeds the scope_id (here 7) in segment 1 of a link-local
+        // DESTINATION; it must be zeroed so LPM keys on the canonical fe80::.
+        let buf = msg(
+            1 << RTAX_DST,
+            7,
+            0,
+            &[sa_in6([0xfe80, 7, 0, 0, 0, 0, 0, 0])],
+        );
+        let r = parse_route_messages(&buf).expect("parses");
+        assert_eq!(r.len(), 1);
+        assert_eq!(r[0].destination, "fe80::".parse::<IpAddr>().unwrap());
+
+        // Interface/link-local multicast (ff02::) is likewise scope-stripped.
+        let buf = msg(
+            1 << RTAX_DST,
+            7,
+            0,
+            &[sa_in6([0xff02, 7, 0, 0, 0, 0, 0, 0])],
+        );
+        let r = parse_route_messages(&buf).expect("parses");
+        assert_eq!(r[0].destination, "ff02::".parse::<IpAddr>().unwrap());
     }
 
     #[test]
