@@ -7,6 +7,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup toolchain install 1.95.0 --profile minimal --component clippy,rustfmt && rustup default 1.95.0
+      - run: cargo fmt --all -- --check
       - run: cargo build --all-targets
       - run: cargo test
       - run: cargo clippy --all-targets -- -D warnings
@@ -29,7 +30,9 @@ jobs:
         run: |
           cat > /tmp/dump.c <<'EOF'
           #include <sys/types.h>
+          #include <sys/socket.h>
           #include <sys/sysctl.h>
+          #include <net/route.h>
           #include <stdlib.h>
           #include <unistd.h>
           int main(void){

@@ -61,12 +61,14 @@ pub enum RouteParseError {
 
 #[inline]
 fn le_u16(b: &[u8], off: usize) -> Option<u16> {
-    b.get(off..off + 2).map(|s| u16::from_le_bytes([s[0], s[1]]))
+    b.get(off..off + 2)
+        .map(|s| u16::from_le_bytes([s[0], s[1]]))
 }
 
 #[inline]
 fn le_i32(b: &[u8], off: usize) -> Option<i32> {
-    b.get(off..off + 4).map(|s| i32::from_le_bytes([s[0], s[1], s[2], s[3]]))
+    b.get(off..off + 4)
+        .map(|s| i32::from_le_bytes([s[0], s[1], s[2], s[3]]))
 }
 
 /// macOS `ROUNDUP`: sockaddr blocks are padded to a multiple of 4; a 0-length
@@ -304,7 +306,11 @@ mod tests {
 
     // BSD-compressed v4 netmask: sa_len counts only the significant bytes.
     fn sa_in_masklen_v4(prefix: u8) -> Vec<u8> {
-        let mask: u32 = if prefix == 0 { 0 } else { u32::MAX << (32 - prefix) };
+        let mask: u32 = if prefix == 0 {
+            0
+        } else {
+            u32::MAX << (32 - prefix)
+        };
         let bytes = mask.to_be_bytes();
         let significant = bytes.iter().rposition(|&b| b != 0).map_or(0, |i| i + 1);
         let mut v = vec![0u8; 4 + significant];
@@ -320,12 +326,18 @@ mod tests {
             (1 << RTAX_DST) | (1 << RTAX_GATEWAY),
             5,
             0,
-            &[sa_in(Ipv4Addr::UNSPECIFIED), sa_in(Ipv4Addr::new(10, 0, 0, 1))],
+            &[
+                sa_in(Ipv4Addr::UNSPECIFIED),
+                sa_in(Ipv4Addr::new(10, 0, 0, 1)),
+            ],
         );
         let routes = parse_route_messages(&buf).expect("valid table parses");
         assert_eq!(routes.len(), 1);
         assert_eq!(routes[0].destination, IpAddr::V4(Ipv4Addr::UNSPECIFIED));
-        assert_eq!(routes[0].gateway, Some(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1))));
+        assert_eq!(
+            routes[0].gateway,
+            Some(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)))
+        );
         assert_eq!(routes[0].prefix, 0); // no NETMASK present => /0
         assert_eq!(routes[0].ifindex, Some(5));
         assert_eq!(routes[0].ifname, None); // resolved later, at FFI boundary
