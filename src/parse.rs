@@ -341,13 +341,23 @@ mod tests {
     fn strips_embedded_scope_from_v6_destination() {
         // macOS embeds the scope_id (here 7) in segment 1 of a link-local
         // DESTINATION; it must be zeroed so LPM keys on the canonical fe80::.
-        let buf = msg(1 << RTAX_DST, 7, 0, &[sa_in6([0xfe80, 7, 0, 0, 0, 0, 0, 0])]);
+        let buf = msg(
+            1 << RTAX_DST,
+            7,
+            0,
+            &[sa_in6([0xfe80, 7, 0, 0, 0, 0, 0, 0])],
+        );
         let r = parse_route_messages(&buf).expect("parses");
         assert_eq!(r.len(), 1);
         assert_eq!(r[0].destination, "fe80::".parse::<IpAddr>().unwrap());
 
         // Interface/link-local multicast (ff02::) is likewise scope-stripped.
-        let buf = msg(1 << RTAX_DST, 7, 0, &[sa_in6([0xff02, 7, 0, 0, 0, 0, 0, 0])]);
+        let buf = msg(
+            1 << RTAX_DST,
+            7,
+            0,
+            &[sa_in6([0xff02, 7, 0, 0, 0, 0, 0, 0])],
+        );
         let r = parse_route_messages(&buf).expect("parses");
         assert_eq!(r[0].destination, "ff02::".parse::<IpAddr>().unwrap());
     }
