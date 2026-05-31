@@ -4,5 +4,5 @@
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
-    let _ = net_route::parse_route_messages(data);
+    let _ = mapscan_route::parse_route_messages(data);
 });

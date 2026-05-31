@@ -1,5 +1,5 @@
 [package]
-name = "net-route"
+name = "mapscan-route"
 version = "0.4.6"
 authors = ["Johnyburd <johnyburd8@gmail.com>"]
 
@@ -23,11 +23,11 @@ targets = [
 # The pure parser (src/parse.rs) has NO dependencies — std only — so depending
 # on this crate from a Linux build pulls nothing heavy. Platform FFI is gated:
 [target.'cfg(target_os = "macos")'.dependencies]
-libc = "0.2"
+libc = "0.2.186"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 # Trimmed to the read path only (GetIpForwardTable2 + luid->name).
-windows-sys = { version = "0.59", features = [
+windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_NetworkManagement_IpHelper",
     "Win32_NetworkManagement_Ndis",

@@ -1,5 +1,5 @@
 [package]
-name = "net-route-fuzz"
+name = "mapscan-route-fuzz"
 version = "0.0.0"
 edition = "2024"
 rust-version = "1.95.0"
@@ -11,8 +11,8 @@ cargo-fuzz = true
 [workspace]
 
 [dependencies]
-libfuzzer-sys = "0.4"
-net-route = { path = ".." }
+libfuzzer-sys = "0.4.12"
+mapscan-route = { path = ".." }
 
 [[bin]]
 name = "parse_route_messages"

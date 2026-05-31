@@ -14,7 +14,7 @@
 //! ```no_run
 //! # #[cfg(any(target_os = "macos", target_os = "windows"))]
 //! # fn main() -> std::io::Result<()> {
-//! for route in net_route::list_routes()? {
+//! for route in mapscan_route::list_routes()? {
 //!     println!("{route:?}");
 //! }
 //! # Ok(())

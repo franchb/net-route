@@ -1,5 +1,5 @@
 //! Windows routing-table list via `GetIpForwardTable2` (read-only). All FFI is
-//! contained here with SAFETY comments; no panics. The exact `windows-sys` 0.59
+//! contained here with SAFETY comments; no panics. The exact `windows-sys` 0.61
 //! union field paths are verified by the `cross`/CI Windows build (plan A8);
 //! runtime correctness (incl. the Q2 Npcap `\Device\NPF_{GUID}` mapping) is
 //! deferred to a Windows CI runner.

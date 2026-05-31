@@ -4,7 +4,7 @@
 //! sysctl one-shot), keeping the lib API free of a raw-buffer accessor.
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 fn main() -> std::io::Result<()> {
-    let routes = net_route::list_routes()?;
+    let routes = mapscan_route::list_routes()?;
     eprintln!("parsed {} routes:", routes.len());
     for r in &routes {
         eprintln!("{r:?}");
