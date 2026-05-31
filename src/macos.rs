@@ -40,7 +40,9 @@ fn fetch_raw_table() -> io::Result<Vec<u8>> {
         }
 
         // Pad against the table growing between the sizing and fetch calls.
-        needed += 2048;
+        // `saturating_add` keeps the panic-free guarantee even in the
+        // (unreachable) overflow case, matching the parser's defensive style.
+        needed = needed.saturating_add(2048);
         let mut buf = vec![0u8; needed];
         // SAFETY: `buf` is allocated for `needed` bytes (the reported size plus
         // pad); `oldp = buf.as_mut_ptr()` is valid for `needed` bytes and
