@@ -4,7 +4,7 @@ version = "0.4.6"
 authors = ["Johnyburd <johnyburd8@gmail.com>"]
 
 edition = "2024"
-rust-version = "1.95.0"
+rust-version = "1.98.1"
 license = "MIT"
 description = "Read the OS routing table (slimmed fork: read-only, sync, safe parser). Forked from johnyburd/net-route for the Mapscan project."
 homepage = "https://github.com/franchb/net-route"
@@ -23,11 +23,11 @@ targets = [
 # The pure parser (src/parse.rs) has NO dependencies — std only — so depending
 # on this crate from a Linux build pulls nothing heavy. Platform FFI is gated:
 [target.'cfg(target_os = "macos")'.dependencies]
-libc = "0.2.186"
+libc = "0.2.189"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 # Trimmed to the read path only (GetIpForwardTable2 + luid->name).
-windows-sys = { version = "0.61", features = [
+windows-sys = { version = "0.61.2", features = [
     "Win32_Foundation",
     "Win32_NetworkManagement_IpHelper",
     "Win32_NetworkManagement_Ndis",

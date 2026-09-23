@@ -2,7 +2,7 @@
 name = "mapscan-route-fuzz"
 version = "0.0.0"
 edition = "2024"
-rust-version = "1.95.0"
+rust-version = "1.98.1"
 publish = false
 
 [package.metadata]
@@ -11,7 +11,7 @@ cargo-fuzz = true
 [workspace]
 
 [dependencies]
-libfuzzer-sys = "0.4.12"
+libfuzzer-sys = "0.4.13"
 mapscan-route = { path = ".." }
 
 [[bin]]

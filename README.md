@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/franchb/net-route/actions/workflows/ci.yml/badge.svg)](https://github.com/franchb/net-route/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![MSRV](https://img.shields.io/badge/MSRV-1.95.0-blue.svg)](#minimum-supported-rust-version)
+[![MSRV](https://img.shields.io/badge/MSRV-1.98.1-blue.svg)](#minimum-supported-rust-version)
 
 Read the OS routing table on macOS and Windows — **read-only, synchronous, and
 panic-free**. A deliberately slimmed fork of
@@ -139,7 +139,7 @@ cargo +nightly fuzz run parse_route_messages
 
 ## Minimum supported Rust version
 
-`mapscan-route` targets **Rust 1.95.0** (edition 2024).
+`mapscan-route` targets **Rust 1.98.1** (edition 2024).
 
 ## License
 
